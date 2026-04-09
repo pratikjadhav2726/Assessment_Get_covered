@@ -14,6 +14,7 @@ from app.services.formatter import ResponseFormatter
 from app.services.scan_orchestrator import ScanOrchestrator, ScanServices
 from app.services.snippet_extractor import SnippetExtractor
 from app.services.result_cache import ResultCache
+from app.services.scan_job_manager import ScanJobManager
 
 configure_logging()
 
@@ -30,6 +31,7 @@ orchestrator = ScanOrchestrator(
         result_cache=ResultCache(ttl_seconds=settings.result_cache_ttl_seconds),
     )
 )
+job_manager = ScanJobManager(orchestrator=orchestrator)
 
 
 @asynccontextmanager

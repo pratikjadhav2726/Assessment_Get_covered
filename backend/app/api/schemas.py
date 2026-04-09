@@ -25,3 +25,22 @@ class ScanResponse(BaseModel):
     detection_signals: list[str]
     html_snippet: str | None = None
     message: str
+
+
+JobState = Literal["queued", "running", "completed", "failed"]
+
+
+class ScanJobCreateResponse(BaseModel):
+    job_id: str
+    state: JobState
+    message: str
+
+
+class ScanJobStatusResponse(BaseModel):
+    job_id: str
+    state: JobState
+    input_url: str
+    created_at: float
+    updated_at: float
+    result: ScanResponse | None = None
+    error: str | None = None
