@@ -4,15 +4,47 @@ Full-stack app for authentication snippet discovery. The backend accepts a publi
 
 The design follows **FastAPI + async**, layered services, **URL safety checks**, rate limiting, optional **Redis-backed** state (jobs + rate limits), and **Nginx** as a single-entry reverse proxy when deployed via Docker.
 
+## Live deployment
+
+- **Frontend:** [https://assessment-get-covered.vercel.app/](https://assessment-get-covered.vercel.app/)
+- **Backend API:** [https://assessment.pratikjadhav.dev](https://assessment.pratikjadhav.dev)
+
 ## Architecture (high level)
 
-```text
-Client → Nginx (:80) → FastAPI (:8000) → Scan orchestrator
-                                    ↓
-              Playwright (render) → DOM parse → Auth heuristics → Snippet extract
-                                    ↓
-                    Redis (optional): scan jobs, idempotency, rate limits
+```mermaid
+flowchart TB
+    subgraph client["Client"]
+        Browser["Browser / React UI"]
+    end
+
+    subgraph edge["Docker Compose (local)"]
+        Nginx["Nginx :80"]
+    end
+
+    subgraph api["Backend"]
+        FastAPI["FastAPI :8000"]
+        Orchestrator["Scan orchestrator"]
+        FastAPI --> Orchestrator
+    end
+
+    subgraph scan["Scan pipeline"]
+        PW["Playwright<br/>Chromium render"]
+        DOM["DOM parse"]
+        Heur["Auth heuristics"]
+        Snip["Snippet extract"]
+        PW --> DOM --> Heur --> Snip
+    end
+
+    subgraph state["Optional state"]
+        Redis[("Redis<br/>jobs · rate limits")]
+    end
+
+    Browser --> Nginx --> FastAPI
+    Orchestrator --> PW
+    Orchestrator <--> Redis
 ```
+
+On **split deployments** (static frontend + API host), the browser calls the API directly; **Nginx** is only the single entrypoint in the Docker Compose setup above.
 
 - **Stateful pieces** (jobs, rate limit counters) are behind interfaces so `STATE_BACKEND` can switch between in-memory and Redis without changing route handlers.
 - **Scans** default to synchronous `POST /api/scan`; heavy workloads can use **async jobs** (`POST /api/scan/jobs` + poll).
