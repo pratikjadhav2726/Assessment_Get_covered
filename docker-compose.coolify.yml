@@ -1,5 +1,5 @@
 services:
-  backend:
+  backend-1:
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -24,7 +24,7 @@ services:
       context: .
       dockerfile: nginx/Dockerfile
     depends_on:
-      backend:
+      backend-1:
         condition: service_started
     expose:
       - "80"
@@ -44,7 +44,7 @@ services:
       - coolify
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost/health"]
+      test: ["CMD", "wget", "-qO-", "http://localhost/nginx-health"]
       interval: 15s
       timeout: 5s
       retries: 5
