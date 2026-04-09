@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 
 import { scanUrl } from "./api";
@@ -36,6 +36,9 @@ function App() {
   const [errorMessage, setErrorMessage] = useState("");
   const [result, setResult] = useState<ScanResponse | null>(null);
   const [lastScannedAt, setLastScannedAt] = useState<Date | null>(null);
+  const [snippetCopied, setSnippetCopied] = useState(false);
+  const resultSectionRef = useRef<HTMLElement | null>(null);
+  const copyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const canSubmit = useMemo(() => {
     const candidate = url.trim();
@@ -57,6 +60,17 @@ function App() {
     }
   }, [theme]);
 
+  useEffect(() => {
+    if (status !== "done" || !result) return;
+    resultSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [status, result]);
+
+  useEffect(() => {
+    return () => {
+      if (copyResetRef.current) clearTimeout(copyResetRef.current);
+    };
+  }, []);
+
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canSubmit) return;
@@ -64,6 +78,7 @@ function App() {
     setStatus("loading");
     setErrorMessage("");
     setResult(null);
+    setSnippetCopied(false);
 
     try {
       const payload = await scanUrl(url.trim(), { debug: debugEnabled });
@@ -148,9 +163,9 @@ function App() {
       )}
 
       {result && (
-        <section className="card result-card">
+        <section ref={resultSectionRef} className="card result-card" aria-label="Scan result">
           <div className="result-header">
-            <div>
+            <div className="result-header__summary">
               <h2>Result</h2>
               <p className="muted">{lastScannedAt ? `Scanned at ${lastScannedAt.toLocaleString()}` : null}</p>
             </div>
@@ -182,13 +197,25 @@ function App() {
             <div className="section-header">
               <h3>Authentication HTML snippet</h3>
               {result.html_snippet ? (
-                <button type="button" onClick={() => navigator.clipboard.writeText(result.html_snippet ?? "")}>
-                  Copy
+                <button
+                  type="button"
+                  className={snippetCopied ? "copied" : undefined}
+                  onClick={() => {
+                    void navigator.clipboard.writeText(result.html_snippet ?? "").then(() => {
+                      setSnippetCopied(true);
+                      if (copyResetRef.current) clearTimeout(copyResetRef.current);
+                      copyResetRef.current = setTimeout(() => setSnippetCopied(false), 2000);
+                    });
+                  }}
+                >
+                  {snippetCopied ? "Copied" : "Copy"}
                 </button>
               ) : null}
             </div>
             {result.html_snippet ? (
-              <pre>{result.html_snippet}</pre>
+              <div className="code-panel">
+                <pre>{result.html_snippet}</pre>
+              </div>
             ) : (
               <p className="muted">No auth snippet available for this scan state.</p>
             )}
@@ -197,7 +224,12 @@ function App() {
           {result.debug ? (
             <section>
               <h3>Debug diagnostics</h3>
-              <pre>{JSON.stringify(result.debug, null, 2)}</pre>
+              <details className="debug-disclosure">
+                <summary>Show raw debug payload</summary>
+                <div className="code-panel">
+                  <pre>{JSON.stringify(result.debug, null, 2)}</pre>
+                </div>
+              </details>
             </section>
           ) : null}
         </section>
