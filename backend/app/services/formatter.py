@@ -9,6 +9,7 @@ class ResponseFormatter:
         confidence: float,
         detection_signals: list[str],
         html_snippet: str | None,
+        debug: dict[str, str | int | float | bool | list[str] | None] | None = None,
     ) -> ScanResponse:
         return ScanResponse(
             input_url=input_url,
@@ -19,10 +20,15 @@ class ResponseFormatter:
             detection_signals=detection_signals,
             html_snippet=html_snippet,
             message="Authentication markup detected.",
+            debug=debug,
         )
 
     @staticmethod
-    def not_found(input_url: str, source: str) -> ScanResponse:
+    def not_found(
+        input_url: str,
+        source: str,
+        debug: dict[str, str | int | float | bool | list[str] | None] | None = None,
+    ) -> ScanResponse:
         return ScanResponse(
             input_url=input_url,
             state="not_found",
@@ -32,10 +38,16 @@ class ResponseFormatter:
             detection_signals=[],
             html_snippet=None,
             message="No authentication component was detected.",
+            debug=debug,
         )
 
     @staticmethod
-    def failure(input_url: str, state: str, message: str) -> ScanResponse:
+    def failure(
+        input_url: str,
+        state: str,
+        message: str,
+        debug: dict[str, str | int | float | bool | list[str] | None] | None = None,
+    ) -> ScanResponse:
         return ScanResponse(
             input_url=input_url,
             state=state,  # type: ignore[arg-type]
@@ -45,4 +57,5 @@ class ResponseFormatter:
             detection_signals=[],
             html_snippet=None,
             message=message,
+            debug=debug,
         )

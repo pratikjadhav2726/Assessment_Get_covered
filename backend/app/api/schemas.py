@@ -25,6 +25,7 @@ class ScanResponse(BaseModel):
     detection_signals: list[str]
     html_snippet: str | None = None
     message: str
+    debug: dict[str, str | int | float | bool | list[str] | None] | None = None
 
 
 JobState = Literal["queued", "running", "completed", "failed"]

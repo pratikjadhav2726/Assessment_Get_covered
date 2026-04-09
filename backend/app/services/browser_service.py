@@ -70,6 +70,7 @@ class BrowserService:
                 await page.wait_for_load_state("networkidle", timeout=min(5000, settings.goto_timeout_ms))
             except PlaywrightTimeoutError:
                 pass
+            await self._try_auth_interactions(page)
             await page.wait_for_timeout(settings.dom_settle_timeout_ms)
 
             frame_html_parts: list[str] = []
@@ -104,3 +105,23 @@ class BrowserService:
                     redirect_hops += 1
                     request = request.redirected_from
             return html, final_url, redirect_hops
+
+    @staticmethod
+    async def _try_auth_interactions(page) -> None:
+        selectors = [
+            "button:has-text('Sign in')",
+            "a:has-text('Sign in')",
+            "button:has-text('Log in')",
+            "a:has-text('Log in')",
+            "button:has-text('Continue with email')",
+            "button:has-text('Continue')",
+        ]
+        for selector in selectors:
+            try:
+                loc = page.locator(selector).first
+                if await loc.count() > 0 and await loc.is_visible():
+                    await loc.click(timeout=1000)
+                    await page.wait_for_timeout(800)
+                    return
+            except Exception:
+                continue

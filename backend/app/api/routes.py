@@ -54,13 +54,14 @@ async def _enforce_rate_limit(
 async def scan_auth_snippet(
     request: Request,
     payload: ScanRequest,
+    debug: bool = False,
     scan_orchestrator: ScanOrchestrator = Depends(get_orchestrator),
     limiter: RateLimiterPort = Depends(get_rate_limiter),
     metrics: MetricsService = Depends(get_metrics),
 ) -> ScanResponse:
     await _enforce_rate_limit(request, "scan", limiter, metrics)
     request_id = str(uuid.uuid4())
-    response, duration_ms = await scan_orchestrator.scan_url(str(payload.url))
+    response, duration_ms = await scan_orchestrator.scan_url(str(payload.url), debug=debug)
     await metrics.record_scan(response.state, duration_ms)
     logger.info(
         "scan_completed",
