@@ -60,6 +60,13 @@ class BrowserService:
             except PlaywrightTimeoutError:
                 pass
             try:
+                await page.wait_for_selector(
+                    "text=/sign in|log in|continue with|one-time/i",
+                    timeout=min(5000, settings.goto_timeout_ms),
+                )
+            except PlaywrightTimeoutError:
+                pass
+            try:
                 await page.wait_for_load_state("networkidle", timeout=min(5000, settings.goto_timeout_ms))
             except PlaywrightTimeoutError:
                 pass
@@ -68,7 +75,21 @@ class BrowserService:
             frame_html_parts: list[str] = []
             for frame in page.frames:
                 try:
-                    content = await frame.content()
+                    content = await frame.evaluate(
+                        """() => {
+                            const serialize = (node) => {
+                                if (!(node instanceof Element)) return "";
+                                let html = node.outerHTML || "";
+                                if (node.shadowRoot) {
+                                    const children = Array.from(node.shadowRoot.children || []);
+                                    const shadowHtml = children.map((child) => serialize(child)).join("");
+                                    html += `<shadow-root>${shadowHtml}</shadow-root>`;
+                                }
+                                return html;
+                            };
+                            return serialize(document.documentElement);
+                        }"""
+                    )
                 except Exception:
                     continue
                 if content:

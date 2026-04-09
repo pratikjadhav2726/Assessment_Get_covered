@@ -4,6 +4,7 @@ from bs4 import Tag
 
 AUTH_BUTTON_TERMS = ("login", "log in", "sign in", "signin", "continue")
 USER_FIELD_TERMS = ("email", "username", "user", "phone")
+FEDERATED_TERMS = ("continue with google", "continue with apple", "continue with email", "google", "apple", "oauth")
 AUTH_TEXT_TERMS = (
     "sign in to your account",
     "welcome back",
@@ -12,6 +13,8 @@ AUTH_TEXT_TERMS = (
     "remember me",
     "continue with",
     "one-time code",
+    "one-time link",
+    "email me a link",
 )
 
 
@@ -86,10 +89,16 @@ class AuthDetector:
         if any(term in buttons_text for term in AUTH_BUTTON_TERMS):
             score += 0.15
             signals.append("auth_button_present")
+        if any(term in buttons_text for term in FEDERATED_TERMS):
+            score += 0.2
+            signals.append("federated_auth_option_present")
 
         nearby_text = node.get_text(" ", strip=True).lower()[:5000]
         if any(term in nearby_text for term in AUTH_TEXT_TERMS):
             score += 0.1
             signals.append("auth_related_text_present")
+        if any(term in nearby_text for term in ("continue with", "one-time", "magic link", "use email")):
+            score += 0.15
+            signals.append("passwordless_auth_flow_present")
 
         return score, signals

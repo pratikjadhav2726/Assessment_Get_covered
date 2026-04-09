@@ -78,6 +78,15 @@ class ScanOrchestrator:
             self.services.url_validator.validate_host_not_ip_blocked(final_parsed.hostname)
         await self.services.network_safety.validate_public_dns(final_url)
 
+        if self._is_protected_or_blocked(html=html, final_url=final_url):
+            response = self.services.formatter.failure(
+                input_url=input_url,
+                state="protected_or_blocked",
+                message="Website returned a protection/captcha/challenge page instead of login markup.",
+            )
+            await self.services.result_cache.set(normalized_input, response)
+            return response
+
         soup = self.services.dom_service.parse(html)
         candidates = self.services.dom_service.iter_candidate_containers(soup)
         detection = self.services.auth_detector.score(candidates)
@@ -100,3 +109,27 @@ class ScanOrchestrator:
 
         await self.services.result_cache.set(normalized_input, response)
         return response
+
+    @staticmethod
+    def _is_protected_or_blocked(html: str, final_url: str) -> bool:
+        low = html.lower()
+        url_low = final_url.lower()
+        markers = (
+            "just a moment",
+            "cf-challenge",
+            "captcha-delivery",
+            "js_challenge",
+            "/captcha/",
+            "recaptcha",
+            "hcaptcha",
+            "challenge-error-text",
+            "are you human",
+            "verify you are human",
+            "please enable javascript and cookies",
+            "security check",
+        )
+        if any(m in low for m in markers):
+            return True
+        if any(m in url_low for m in ("js_challenge", "captcha", "challenge")):
+            return True
+        return False
