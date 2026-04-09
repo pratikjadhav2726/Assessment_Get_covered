@@ -47,6 +47,7 @@ Client → Nginx (:80) → FastAPI (:8000) → Scan orchestrator
 ├── pyproject.toml
 ├── uv.lock
 ├── .env.example
+├── api.md                      # backend HTTP API reference
 ├── Plan.md                     # original product/architecture notes
 └── README.md
 ```
@@ -139,40 +140,9 @@ See `.env.example` for the full set. Important knobs:
 
 ## API reference
 
-### `POST /api/scan`
+Full documentation for all routes, JSON schemas, rate limits, and `curl` examples lives in **[api.md](api.md)**.
 
-Synchronous scan.
-
-**Body:**
-
-```json
-{ "url": "https://example.com/login" }
-```
-
-**Query:**
-
-- `debug=true` — includes a `debug` object (final URL, title snippet, HTML preview, blocked reasons, simple markers).
-
-**Response (`ScanResponse`):**
-
-- `state`: `found` | `not_found` | `protected_or_blocked` | `invalid_input` | `timeout` | `scan_error`
-- `found`, `confidence`, `detection_signals`, `html_snippet` (when `found`), `message`, optional `debug`
-
-### `POST /api/scan/jobs`
-
-Enqueue a job. Optional header: `Idempotency-Key` (dedup within TTL).
-
-### `GET /api/scan/jobs/{job_id}`
-
-Poll job status and result.
-
-### `GET /health`
-
-Liveness.
-
-### `GET /metrics`
-
-Simple counters and average scan latency (JSON).
+While the server is running you can also use the built-in OpenAPI UI (e.g. `http://localhost:8000/docs` locally, or `http://localhost/docs` when using Docker Compose behind Nginx).
 
 ## Safety notes
 
