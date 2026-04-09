@@ -1,6 +1,6 @@
 # Auth Snippet Discovery API
 
-Backend service that accepts a public HTTPS URL, loads the page with headless Chromium (Playwright), analyzes the rendered DOM, and returns whether authentication-related markup was found along with a bounded HTML snippet when possible.
+Full-stack app for authentication snippet discovery. The backend accepts a public HTTPS URL, loads the page with headless Chromium (Playwright), analyzes the rendered DOM, and returns whether authentication-related markup was found along with a bounded HTML snippet when possible. The frontend provides a scan UI with result states, snippet rendering, and optional debug diagnostics.
 
 The design follows **FastAPI + async**, layered services, **URL safety checks**, rate limiting, optional **Redis-backed** state (jobs + rate limits), and **Nginx** as a single-entry reverse proxy when deployed via Docker.
 
@@ -38,6 +38,9 @@ Client → Nginx (:80) → FastAPI (:8000) → Scan orchestrator
 │       ├── core/               # settings, logging
 │       ├── security/           # URL validation, DNS safety
 │       └── services/           # browser, DOM, detector, orchestrator, cache, jobs
+├── frontend/
+│   ├── src/                    # React + TypeScript UI
+│   └── .env.example            # VITE_API_BASE_URL
 ├── nginx/
 │   └── nginx.conf              # Reverse proxy to backend
 ├── docker-compose.yml
@@ -89,6 +92,28 @@ docker compose up -d --build
 - Public API base URL: `http://localhost`
 - Health: `GET http://localhost/health`
 - Metrics (JSON): `GET http://localhost/metrics` (via Nginx → backend)
+
+## Frontend (React + TypeScript)
+
+The frontend is a standalone Vite app that calls the backend API and renders:
+
+- URL submission with validation
+- scan lifecycle (`idle`, `loading`, `done`, `error`)
+- result state badge (`found`, `not_found`, `protected_or_blocked`, etc.)
+- detection signals
+- returned auth HTML snippet with copy action
+- optional debug diagnostics (`debug=true`)
+
+Run locally:
+
+```bash
+cd frontend
+cp .env.example .env
+npm install
+npm run dev
+```
+
+By default, `.env.example` points to `http://localhost`, which matches the Compose/Nginx setup.
 
 To tear down (and remove Redis volume):
 
