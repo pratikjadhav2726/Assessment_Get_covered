@@ -149,6 +149,7 @@ See `.env.example` for the full set. Important knobs:
 | `RESULT_CACHE_TTL_SECONDS` | Short-TTL cache of scan results by normalized URL |
 | `STATE_BACKEND` | `memory` or `redis` |
 | `REDIS_URL` | e.g. `redis://redis:6379/0` in Compose |
+| `CORS_ALLOW_ORIGINS` | Comma-separated allowed browser origins for CORS |
 | `RATE_LIMIT_*` | Per-client sliding window for API endpoints |
 
 ## API reference

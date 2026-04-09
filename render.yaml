@@ -20,6 +20,8 @@ services:
     envVars:
       - key: STATE_BACKEND
         value: redis
+      - key: CORS_ALLOW_ORIGINS
+        value: https://assessment-get-covered.vercel.app
       - key: REDIS_URL
         fromService:
           name: auth-snippet-redis

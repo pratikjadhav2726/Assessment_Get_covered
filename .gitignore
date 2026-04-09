@@ -40,3 +40,4 @@ test-results/
 
 # UV lock/install artifacts
 .uv-cache/
+frontend/.env

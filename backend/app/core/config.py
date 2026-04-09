@@ -23,9 +23,22 @@ class Settings:
     rate_limit_window_seconds: int = 60
     state_backend: str = "memory"
     redis_url: str = "redis://localhost:6379/0"
+    cors_allow_origins: tuple[str, ...] = (
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost",
+        "http://127.0.0.1",
+    )
 
     @staticmethod
     def from_env() -> "Settings":
+        raw_origins = os.getenv("CORS_ALLOW_ORIGINS", "")
+        parsed_origins = tuple(
+            origin.strip()
+            for origin in raw_origins.split(",")
+            if origin.strip()
+        )
+
         return Settings(
             app_name=os.getenv("APP_NAME", "Auth Snippet Discovery API"),
             app_env=os.getenv("APP_ENV", "dev"),
@@ -46,6 +59,14 @@ class Settings:
             rate_limit_window_seconds=int(os.getenv("RATE_LIMIT_WINDOW_SECONDS", "60")),
             state_backend=os.getenv("STATE_BACKEND", "memory").lower(),
             redis_url=os.getenv("REDIS_URL", "redis://localhost:6379/0"),
+            cors_allow_origins=parsed_origins
+            if parsed_origins
+            else (
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
+                "http://localhost",
+                "http://127.0.0.1",
+            ),
         )
 
 
