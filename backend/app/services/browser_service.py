@@ -1,7 +1,7 @@
 import asyncio
 from contextlib import asynccontextmanager
 
-from playwright.async_api import Browser, Playwright, async_playwright
+from playwright.async_api import Browser, Playwright, TimeoutError as PlaywrightTimeoutError, async_playwright
 
 from app.core.config import settings
 
@@ -54,8 +54,27 @@ class BrowserService:
     async def get_rendered_html(self, url: str) -> tuple[str, str, int]:
         async with self.page_session() as page:
             response = await page.goto(url, wait_until="domcontentloaded", timeout=settings.goto_timeout_ms)
+            # Give login widgets and client-side hydration a chance to appear.
+            try:
+                await page.wait_for_selector("input[type='password']", timeout=min(5000, settings.goto_timeout_ms))
+            except PlaywrightTimeoutError:
+                pass
+            try:
+                await page.wait_for_load_state("networkidle", timeout=min(5000, settings.goto_timeout_ms))
+            except PlaywrightTimeoutError:
+                pass
             await page.wait_for_timeout(settings.dom_settle_timeout_ms)
-            html = await page.content()
+
+            frame_html_parts: list[str] = []
+            for frame in page.frames:
+                try:
+                    content = await frame.content()
+                except Exception:
+                    continue
+                if content:
+                    frame_html_parts.append(content)
+
+            html = "\n<!-- frame-split -->\n".join(frame_html_parts) if frame_html_parts else await page.content()
             final_url = page.url
             redirect_hops = 0
             if response is not None:

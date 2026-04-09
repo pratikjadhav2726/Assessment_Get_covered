@@ -10,6 +10,8 @@ AUTH_TEXT_TERMS = (
     "password",
     "forgot password",
     "remember me",
+    "continue with",
+    "one-time code",
 )
 
 
@@ -39,40 +41,53 @@ class AuthDetector:
         score = 0.0
         signals: list[str] = []
 
-        password_inputs = node.find_all("input", attrs={"type": "password"})
+        password_inputs = node.find_all(
+            "input",
+            attrs={"type": lambda value: value in {"password", "current-password", "new-password"} if value else False},
+        )
         if password_inputs:
-            score += 0.55
+            score += 0.45
             signals.append("password_input_present")
 
-        username_input = node.find(
+        user_inputs = node.find_all(
             "input",
-            attrs={
-                "type": lambda value: value in {"text", "email", "tel"} if value else False,  # type: ignore[arg-type]
-            },
+            attrs={"type": lambda value: value in {"text", "email", "tel"} if value else False},  # type: ignore[arg-type]
         )
-        if username_input:
+        user_match = False
+        for user_input in user_inputs:
             attrs_text = " ".join(
                 [
-                    username_input.get("name", ""),
-                    username_input.get("id", ""),
-                    username_input.get("placeholder", ""),
-                    username_input.get("autocomplete", ""),
+                    user_input.get("name", ""),
+                    user_input.get("id", ""),
+                    user_input.get("placeholder", ""),
+                    user_input.get("autocomplete", ""),
+                    user_input.get("aria-label", ""),
+                    user_input.get("data-testid", ""),
                 ]
             ).lower()
             if any(t in attrs_text for t in USER_FIELD_TERMS):
-                score += 0.2
-                signals.append("username_or_email_input_present")
+                user_match = True
+                break
+        if user_match:
+            score += 0.2
+            signals.append("username_or_email_input_present")
+
+        if password_inputs and user_inputs:
+            score += 0.15
+            signals.append("password_and_user_inputs_nearby")
 
         if node.name == "form":
             score += 0.1
             signals.append("form_container_present")
 
-        buttons_text = " ".join(btn.get_text(" ", strip=True).lower() for btn in node.find_all(["button", "a"]))
+        buttons_text = " ".join(
+            btn.get_text(" ", strip=True).lower() for btn in node.find_all(["button", "a", "span", "div"])
+        )
         if any(term in buttons_text for term in AUTH_BUTTON_TERMS):
-            score += 0.1
+            score += 0.15
             signals.append("auth_button_present")
 
-        nearby_text = node.get_text(" ", strip=True).lower()[:2000]
+        nearby_text = node.get_text(" ", strip=True).lower()[:5000]
         if any(term in nearby_text for term in AUTH_TEXT_TERMS):
             score += 0.1
             signals.append("auth_related_text_present")

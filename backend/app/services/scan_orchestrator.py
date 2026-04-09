@@ -82,10 +82,14 @@ class ScanOrchestrator:
         candidates = self.services.dom_service.iter_candidate_containers(soup)
         detection = self.services.auth_detector.score(candidates)
 
-        if detection.container is None or detection.confidence < 0.5:
+        if detection.container is None or detection.confidence < 0.4:
             response = self.services.formatter.not_found(input_url=input_url, source=final_url)
         else:
             snippet = self.services.snippet_extractor.extract(detection.container)
+            if not snippet:
+                response = self.services.formatter.not_found(input_url=input_url, source=final_url)
+                await self.services.result_cache.set(normalized_input, response)
+                return response
             response = self.services.formatter.found(
                 input_url=input_url,
                 source=final_url,
