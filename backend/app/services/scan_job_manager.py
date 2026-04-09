@@ -4,6 +4,7 @@ from time import monotonic, time
 import uuid
 
 from app.api.schemas import ScanJobStatusResponse, ScanResponse
+from app.services.ports import ScanJobManagerPort
 from app.services.scan_orchestrator import ScanOrchestrator
 
 
@@ -18,7 +19,7 @@ class JobRecord:
     error: str | None
 
 
-class ScanJobManager:
+class InMemoryScanJobManager(ScanJobManagerPort):
     def __init__(
         self,
         orchestrator: ScanOrchestrator,
@@ -154,3 +155,6 @@ class ScanJobManager:
             result=record.result,
             error=record.error,
         )
+
+
+ScanJobManager = InMemoryScanJobManager

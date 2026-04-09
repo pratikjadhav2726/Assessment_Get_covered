@@ -5,8 +5,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
 from app.api.schemas import ScanJobCreateResponse, ScanJobStatusResponse, ScanRequest, ScanResponse
 from app.services.metrics_service import MetricsService
-from app.services.rate_limiter import RateLimiter
-from app.services.scan_job_manager import ScanJobManager
+from app.services.ports import RateLimiterPort, ScanJobManagerPort
 from app.services.scan_orchestrator import ScanOrchestrator
 
 logger = logging.getLogger(__name__)
@@ -19,13 +18,13 @@ def get_orchestrator() -> ScanOrchestrator:
     return orchestrator
 
 
-def get_job_manager() -> ScanJobManager:
+def get_job_manager() -> ScanJobManagerPort:
     from app.main import job_manager
 
     return job_manager
 
 
-def get_rate_limiter() -> RateLimiter:
+def get_rate_limiter() -> RateLimiterPort:
     from app.main import rate_limiter
 
     return rate_limiter
@@ -42,7 +41,9 @@ def _client_key(request: Request, endpoint: str) -> str:
     return f"{client_host}:{endpoint}"
 
 
-async def _enforce_rate_limit(request: Request, endpoint: str, limiter: RateLimiter, metrics: MetricsService) -> None:
+async def _enforce_rate_limit(
+    request: Request, endpoint: str, limiter: RateLimiterPort, metrics: MetricsService
+) -> None:
     allowed = await limiter.allow(_client_key(request, endpoint))
     if not allowed:
         await metrics.increment("rate_limit_rejected_total")
@@ -54,7 +55,7 @@ async def scan_auth_snippet(
     request: Request,
     payload: ScanRequest,
     scan_orchestrator: ScanOrchestrator = Depends(get_orchestrator),
-    limiter: RateLimiter = Depends(get_rate_limiter),
+    limiter: RateLimiterPort = Depends(get_rate_limiter),
     metrics: MetricsService = Depends(get_metrics),
 ) -> ScanResponse:
     await _enforce_rate_limit(request, "scan", limiter, metrics)
@@ -78,8 +79,8 @@ async def scan_auth_snippet(
 async def create_scan_job(
     request: Request,
     payload: ScanRequest,
-    manager: ScanJobManager = Depends(get_job_manager),
-    limiter: RateLimiter = Depends(get_rate_limiter),
+    manager: ScanJobManagerPort = Depends(get_job_manager),
+    limiter: RateLimiterPort = Depends(get_rate_limiter),
     metrics: MetricsService = Depends(get_metrics),
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> ScanJobCreateResponse:
@@ -97,8 +98,8 @@ async def create_scan_job(
 async def get_scan_job(
     request: Request,
     job_id: str,
-    manager: ScanJobManager = Depends(get_job_manager),
-    limiter: RateLimiter = Depends(get_rate_limiter),
+    manager: ScanJobManagerPort = Depends(get_job_manager),
+    limiter: RateLimiterPort = Depends(get_rate_limiter),
     metrics: MetricsService = Depends(get_metrics),
 ) -> ScanJobStatusResponse:
     await _enforce_rate_limit(request, "scan_jobs_get", limiter, metrics)
