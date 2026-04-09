@@ -43,7 +43,8 @@ Client → Nginx (:80) → FastAPI (:8000) → Scan orchestrator
 │   └── .env.example            # VITE_API_BASE_URL
 ├── nginx/
 │   └── nginx.conf              # Reverse proxy to backend
-├── docker-compose.yml
+├── docker-compose.yml          # local: Nginx + API + Redis
+├── render.yaml                 # Render Blueprint (API + Redis; see below)
 ├── pyproject.toml
 ├── uv.lock
 ├── .env.example
@@ -93,6 +94,18 @@ docker compose up -d --build
 - Public API base URL: `http://localhost`
 - Health: `GET http://localhost/health`
 - Metrics (JSON): `GET http://localhost/metrics` (via Nginx → backend)
+
+## Render (production)
+
+**Render does not run `docker compose up`.** Use the repo’s **[render.yaml](render.yaml)** [Blueprint](https://docs.render.com/docs/infrastructure-as-code) so the **same logical stack** as Compose is created there: **FastAPI from `backend/Dockerfile` + Render Key Value (Redis)**. Nginx is only needed locally for multi-backend routing; on Render, traffic goes straight to the web service (HTTPS at the edge).
+
+1. Push this repo to GitHub/GitLab/Bitbucket.
+2. In the Render dashboard: **New → Blueprint** → connect the repo → apply `render.yaml`.
+3. The API **start command** is already set in Blueprint as `dockerCommand` (Uvicorn on **`$PORT`**). You do not paste a separate “start command” unless you edit the Blueprint.
+4. Set `STATE_BACKEND=redis` and `REDIS_URL` from the Key Value instance (both are defined in `render.yaml`).
+5. Deploy the **frontend** as a **Static Site** (or other host): set `VITE_API_BASE_URL` to your Render API URL (e.g. `https://auth-snippet-api.onrender.com`).
+
+Playwright/Chromium is memory-heavy; if the service OOMs, upgrade the web service **plan** in the dashboard.
 
 ## Frontend (React + TypeScript)
 
