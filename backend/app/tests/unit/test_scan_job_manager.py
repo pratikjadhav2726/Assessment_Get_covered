@@ -40,3 +40,30 @@ async def test_scan_job_manager_submit_and_poll() -> None:
         await asyncio.sleep(0.01)
 
     pytest.fail("Job did not complete within expected time window.")
+
+
+@pytest.mark.anyio
+async def test_scan_job_idempotency_returns_same_job() -> None:
+    manager = ScanJobManager(orchestrator=FakeOrchestrator(), idempotency_ttl_seconds=60)  # type: ignore[arg-type]
+    first = await manager.submit("https://example.com", idempotency_key="same-key")
+    second = await manager.submit("https://example.com", idempotency_key="same-key")
+    assert first.job_id == second.job_id
+
+
+@pytest.mark.anyio
+async def test_scan_job_cleanup_removes_stale_completed_jobs() -> None:
+    manager = ScanJobManager(
+        orchestrator=FakeOrchestrator(),  # type: ignore[arg-type]
+        retention_seconds=0,
+        cleanup_interval_seconds=60,
+    )
+    accepted = await manager.submit("https://example.com")
+    for _ in range(30):
+        status = await manager.get(accepted.job_id)
+        assert status is not None
+        if status.state == "completed":
+            break
+        await asyncio.sleep(0.01)
+    await manager.cleanup_once()
+    status_after = await manager.get(accepted.job_id)
+    assert status_after is None

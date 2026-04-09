@@ -16,6 +16,13 @@ class Settings:
     max_concurrent_scans: int = 5
     max_redirect_hops: int = 5
     result_cache_ttl_seconds: int = 90
+    job_retention_seconds: int = 900
+    job_cleanup_interval_seconds: int = 30
+    idempotency_ttl_seconds: int = 600
+    rate_limit_requests: int = 60
+    rate_limit_window_seconds: int = 60
+    state_backend: str = "memory"
+    redis_url: str = "redis://localhost:6379/0"
 
     @staticmethod
     def from_env() -> "Settings":
@@ -32,6 +39,13 @@ class Settings:
             max_concurrent_scans=int(os.getenv("MAX_CONCURRENT_SCANS", "5")),
             max_redirect_hops=int(os.getenv("MAX_REDIRECT_HOPS", "5")),
             result_cache_ttl_seconds=int(os.getenv("RESULT_CACHE_TTL_SECONDS", "90")),
+            job_retention_seconds=int(os.getenv("JOB_RETENTION_SECONDS", "900")),
+            job_cleanup_interval_seconds=int(os.getenv("JOB_CLEANUP_INTERVAL_SECONDS", "30")),
+            idempotency_ttl_seconds=int(os.getenv("IDEMPOTENCY_TTL_SECONDS", "600")),
+            rate_limit_requests=int(os.getenv("RATE_LIMIT_REQUESTS", "60")),
+            rate_limit_window_seconds=int(os.getenv("RATE_LIMIT_WINDOW_SECONDS", "60")),
+            state_backend=os.getenv("STATE_BACKEND", "memory").lower(),
+            redis_url=os.getenv("REDIS_URL", "redis://localhost:6379/0"),
         )
 
 
