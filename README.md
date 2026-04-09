@@ -2,7 +2,7 @@
 
 Full-stack app for authentication snippet discovery. The backend accepts a public HTTPS URL, loads the page with headless Chromium (Playwright), analyzes the rendered DOM, and returns whether authentication-related markup was found along with a bounded HTML snippet when possible. The frontend provides a scan UI with result states, snippet rendering, and optional debug diagnostics.
 
-The design follows **FastAPI + async**, layered services, **URL safety checks**, rate limiting, optional **Redis-backed** state (jobs + rate limits), and **Nginx** as a single-entry reverse proxy when deployed via Docker.
+The design follows **FastAPI + async**, layered services, **URL safety checks**, rate limiting, and optional **Redis-backed** state (jobs + rate limits). **Production is split:** the UI is a static SPA on **Vercel** and the API is served under its own HTTPS host. **Nginx** appears only in **local Docker Compose** as a convenience reverse proxy.
 
 ## Live deployment
 
@@ -13,16 +13,16 @@ The design follows **FastAPI + async**, layered services, **URL safety checks**,
 
 ```mermaid
 flowchart TB
-    subgraph client["Client"]
-        Browser["Browser / React UI"]
+    subgraph user["User"]
+        Browser["Browser"]
     end
 
-    subgraph edge["Docker Compose (local)"]
-        Nginx["Nginx :80"]
+    subgraph fe["Frontend (production)"]
+        Vercel["Static React app<br/>Vercel CDN"]
     end
 
-    subgraph api["Backend"]
-        FastAPI["FastAPI :8000"]
+    subgraph api["Backend (production)"]
+        FastAPI["FastAPI HTTPS<br/>assessment.pratikjadhav.dev"]
         Orchestrator["Scan orchestrator"]
         FastAPI --> Orchestrator
     end
@@ -39,12 +39,13 @@ flowchart TB
         Redis[("Redis<br/>jobs · rate limits")]
     end
 
-    Browser --> Nginx --> FastAPI
+    Browser -->|page / assets| Vercel
+    Browser -->|JSON API| FastAPI
     Orchestrator --> PW
     Orchestrator <--> Redis
 ```
 
-On **split deployments** (static frontend + API host), the browser calls the API directly; **Nginx** is only the single entrypoint in the Docker Compose setup above.
+**Local demos** can still use **Docker Compose** with Nginx → API on `localhost` (see below); that path is not used in production.
 
 - **Stateful pieces** (jobs, rate limit counters) are behind interfaces so `STATE_BACKEND` can switch between in-memory and Redis without changing route handlers.
 - **Scans** default to synchronous `POST /api/scan`; heavy workloads can use **async jobs** (`POST /api/scan/jobs` + poll).
@@ -56,7 +57,7 @@ On **split deployments** (static frontend + API host), the browser calls the API
 - **BeautifulSoup + lxml** for DOM analysis
 - **Redis** (optional) for distributed-friendly rate limiting and job metadata
 - **uv** for dependency management (`pyproject.toml` + `uv.lock`)
-- **Docker Compose**: Nginx + API + Redis
+- **Docker Compose** (local only): Nginx + API + Redis
 
 ## Repository layout
 
@@ -127,7 +128,9 @@ docker compose up -d --build
 - Health: `GET http://localhost/health`
 - Metrics (JSON): `GET http://localhost/metrics` (via Nginx → backend)
 
-## Render (production)
+## Render (optional API hosting)
+
+The **live** app uses a **split** deploy (Vercel UI + API on `assessment.pratikjadhav.dev`). **Render** is documented here as one way to run the API (and Redis) if you are not using that stack.
 
 **Render does not run `docker compose up`.** Use the repo’s **[render.yaml](render.yaml)** [Blueprint](https://docs.render.com/docs/infrastructure-as-code) so the **same logical stack** as Compose is created there: **FastAPI from `backend/Dockerfile` + Render Key Value (Redis)**. Nginx is only needed locally for multi-backend routing; on Render, traffic goes straight to the web service (HTTPS at the edge).
 
